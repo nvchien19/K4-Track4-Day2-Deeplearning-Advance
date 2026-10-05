@@ -53,6 +53,7 @@ class Config:
     out_dir: str = "runs"
     pred_dir: str = "predictions"
     save_test_predictions: bool = False
+    resume: bool = False
 
 
 def run_dir(cfg: Config) -> Path:
@@ -121,7 +122,7 @@ def train_one_epoch(model, loader, criterion, optimizer, scheduler, scaler, cfg:
                 m.eval()
     tot, n, t0 = 0.0, 0, time.time()
     use_amp = cfg.amp and device.type == "cuda"
-    for x, y, _ in loader:
+    for batch_idx, (x, y, _) in enumerate(loader):
         x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
         optimizer.zero_grad(set_to_none=True)
         with torch.autocast(device.type, enabled=use_amp):
@@ -144,6 +145,9 @@ def train_one_epoch(model, loader, criterion, optimizer, scheduler, scaler, cfg:
             ema.update(model)
         tot += loss.item() * x.size(0)
         n += x.size(0)
+        if (batch_idx + 1) % 25 == 0:
+            print(f"{cfg.exp_id} seed={cfg.seed} batch={batch_idx+1}/{len(loader)} "
+                  f"loss={tot/max(n,1):.4f} elapsed_s={time.time()-t0:.0f}", flush=True)
     return {"train_loss": tot / max(n, 1), "lr": optimizer.param_groups[0]["lr"],
             "time_s": time.time() - t0}
 
@@ -202,6 +206,15 @@ def run(cfg: Config) -> dict:
     set_seed(cfg.seed)
     rdir = run_dir(cfg)
     rdir.mkdir(parents=True, exist_ok=True)
+    if cfg.resume and (rdir / "config.json").exists():
+        previous = json.loads((rdir / "config.json").read_text())
+        current = dataclasses.asdict(cfg)
+        previous.pop("resume", None); current.pop("resume", None)
+        if previous != current:
+            raise ValueError(f"Cannot resume with a changed configuration: {rdir}")
+        if (rdir / "summary.json").exists():
+            print(f"Reuse completed: {cfg.exp_id} seed={cfg.seed}", flush=True)
+            return json.loads((rdir / "summary.json").read_text())
     (rdir / "config.json").write_text(json.dumps(dataclasses.asdict(cfg), indent=2, default=str))
 
     train_df, val_df, test_df = D.load_split(cfg.labels_dir, cfg.fold)
@@ -217,7 +230,9 @@ def run(cfg: Config) -> dict:
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.backends.cudnn.benchmark = True
-    model = M.build_model(cfg.backbone, True, 9, cfg.drop_rate, cfg.init).to(device)
+    latest_path = rdir / "latest.pt"
+    restoring = cfg.resume and latest_path.exists()
+    model = M.build_model(cfg.backbone, not restoring, 9, cfg.drop_rate, cfg.init).to(device)
     if device.type == "cuda":
         try:
             model = model.to(memory_format=torch.channels_last)
@@ -244,7 +259,23 @@ def run(cfg: Config) -> dict:
     history: list = []
     best_f1, best_ep, best_state = -1.0, -1, None
     t_epoch = []
-    for epoch in range(cfg.epochs):
+    start_epoch = 0
+    if restoring:
+        saved = torch.load(latest_path, map_location=device, weights_only=False)
+        model.load_state_dict(saved["model"])
+        opt.load_state_dict(saved["optimizer"]); sch.load_state_dict(saved["scheduler"])
+        scaler.load_state_dict(saved["scaler"])
+        if ema: ema.ema_model.load_state_dict(saved["ema"])
+        history, t_epoch = saved["history"], saved["t_epoch"]
+        best_f1, best_ep = saved["best_f1"], saved["best_ep"]
+        best_state = torch.load(rdir / "best.pt", map_location=device, weights_only=True)["state"]
+        random.setstate(saved["python_rng"]); np.random.set_state(saved["numpy_rng"])
+        torch.set_rng_state(saved["torch_rng"].cpu())
+        if device.type == "cuda": torch.cuda.set_rng_state_all(saved["cuda_rng"])
+        start_epoch = saved["epoch"] + 1
+        del saved
+        print(f"Resume {cfg.exp_id} at epoch {start_epoch+1}", flush=True)
+    for epoch in range(start_epoch, cfg.epochs):
         tr = train_one_epoch(model, train_loader, criterion, opt, sch, scaler, cfg, device, ema)
         fn, yt, logits, vl = evaluate(eval_model, val_loader, criterion, device)
         probs = torch.softmax(torch.from_numpy(logits), 1).numpy()
@@ -261,6 +292,16 @@ def run(cfg: Config) -> dict:
             best_state = copy.deepcopy(eval_model.state_dict())
             torch.save({"epoch": epoch, "state": best_state, "cfg": dataclasses.asdict(cfg)},
                        rdir / "best.pt")
+        if cfg.resume:
+            torch.save({"epoch": epoch, "model": model.state_dict(), "optimizer": opt.state_dict(),
+                        "scheduler": sch.state_dict(), "scaler": scaler.state_dict(),
+                        "ema": ema.ema_model.state_dict() if ema else None,
+                        "history": history, "t_epoch": t_epoch, "best_f1": best_f1, "best_ep": best_ep,
+                        "python_rng": random.getstate(), "numpy_rng": np.random.get_state(),
+                        "torch_rng": torch.get_rng_state(),
+                        "cuda_rng": torch.cuda.get_rng_state_all() if device.type == "cuda" else None},
+                       rdir / "latest.tmp")
+            (rdir / "latest.tmp").replace(latest_path)
     eval_model.load_state_dict(best_state)
     torch.save({"epoch": best_ep, "state": best_state, "cfg": dataclasses.asdict(cfg)}, rdir / "best.pt")
 

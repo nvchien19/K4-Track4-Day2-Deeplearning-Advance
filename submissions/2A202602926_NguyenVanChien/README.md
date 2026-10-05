@@ -1,5 +1,28 @@
 # Lab Day 2 — DeepWeeds | 2A202602926_NguyenVanChien
 
+## Chạy local (bắt đầu ngày 05/10/2026)
+
+Từ thư mục gốc repo:
+
+```powershell
+& ./.venv-local/Scripts/python.exe -u submissions/2A202602926_NguyenVanChien/code/run_local.py --epochs 12 --batch-size 16 --threads 4
+```
+
+Máy hiện tại chạy CPU, torch 2.13.0+cpu / torchvision 0.29.1+cpu / timm 1.0.30 / NumPy 1.26.4 / pandas 1.5.3.
+Môi trường `.venv-local` dùng thư viện Python 3.11 đã cài, ghim NumPy riêng để tương thích pandas.
+Đã chạy 38 test repo thành công và kiểm tra forward MobileNet 9 lớp.
+
+- Hàng đợi: 7 backbone, T00–T12 (có thử kết hợp), single/flip-logit/five-crop/temperature trên val, F01 và BASE12 với seed 0,1,2.
+- Dữ liệu: toàn bộ fold 0, 10.501 train / 3.501 val / 3.507 test; đã kiểm tra file tồn tại và giao rỗng.
+- Log chạy nền: `logs/local_full.log`, `logs/local_full.err`; trạng thái: `local_outputs/status.json`.
+- Checkpoint: `local_outputs/runs/<exp_id>/seed<k>/best.pt` và `latest.pt`; lịch sử: `history.csv`.
+- Chạy lại cùng lệnh để tiếp tục từ epoch đã lưu; không chạy hai tiến trình cùng lúc. Các lần chạy hoàn tất được bỏ qua nếu cấu hình khớp.
+- Kết quả thật: `local_outputs/all_runs_summary.csv`, `inference_results.json`, `final_selection.json`, `eval_out/`; ảnh và dự đoán ghi trực tiếp vào `curves/`, `predictions/` của bài nộp.
+- Logit test được lưu để tái sử dụng nếu chạy lại. Chọn backbone/công thức/suy luận và khớp T chỉ dùng val.
+- Sau khi hàng đợi hoàn tất vẫn cần tổng hợp số liệu thật vào `results.xlsx` và `report.md`; không dùng số smoke-test làm kết quả chính thức.
+
+Notebook Colab đã dùng: https://colab.research.google.com/drive/1eP28eoCj_IswTTaONWfsRa-fUdskUp8_
+
 ## Chạy trên Colab (khuyên dùng, GPU T4 miễn phí)
 1. Mở https://colab.research.google.com → Upload → chọn file `code/colab_full.ipynb` trong bài nộp này.
 2. Runtime → Change runtime type → **GPU (T4)** → Save.
