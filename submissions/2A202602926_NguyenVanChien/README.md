@@ -2,7 +2,7 @@
 
 ## Trạng thái thực tế
 
-Bản local rút gọn hoàn tất ngày 05/10/2026. Một backbone MobileNetV3, 4 epoch đã lưu, seed 0. Test Q01: macro-F1 0.7770, top-1 0.8386, ECE 0.0126. Đây là bài lab một phần. Các thí nghiệm chưa chạy được ghi rõ trong report và Excel.
+Bản local rút gọn hoàn tất ngày 05/10/2026. Một backbone MobileNetV3, 4 epoch đã lưu, seed 0. Test Q01: macro-F1 0.7770, top-1 0.8386, ECE 0.0126. Bổ sung cùng ngày: R01 ResNet50 train Colab T4 5 epoch, seed 0 (output Colab vừa tải về). Val 0.7607 / test macro 0.7545 top-1 0.8226 ECE 0.0163. Đây vẫn là bài lab một phần. Các thí nghiệm chưa chạy được ghi rõ trong report và Excel.
 
 ## Xem kết quả
 
@@ -10,6 +10,7 @@ Bản local rút gọn hoàn tất ngày 05/10/2026. Một backbone MobileNetV3,
 - `report.md`: thiết lập, đường cong, suy luận, test, từng lớp, ma trận nhầm lẫn và hạn chế.
 - `evidence/`: cấu hình, số liệu, lịch sử và kết quả tính lại bằng eval.py.
 - `predictions/Q01_seed0_test.csv`: đủ 3.507 ảnh, y_true/y_pred/p0…p8.
+- `predictions/R01_seed0_test.csv` + `R01_seed0_val.csv`: ResNet50 Colab T4, copy từ output Colab, đã qua `eval.py score`.
 
 ## Môi trường đã kiểm tra
 

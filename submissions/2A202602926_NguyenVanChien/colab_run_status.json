@@ -1,13 +1,1 @@
-{
-  "notebook_url": "https://colab.research.google.com/drive/1eP28eoCj_IswTTaONWfsRa-fUdskUp8_",
-  "notebook_file": "submissions/2A202602926_NguyenVanChien/code/colab_autorun.ipynb",
-  "state": "running_in_user_browser",
-  "gpu": "Tesla T4",
-  "images": 17509,
-  "train_images": 10501,
-  "val_images": 3501,
-  "test_images": 3507,
-  "latest_observed": "B01 resnet50 seed0 epoch4/12 val_macro_f1=0.7759",
-  "output_archive": "colab_outputs.zip",
-  "results_downloaded": false
-}
+{"gpu":"Tesla T4 (Colab)","images":17509,"latest_observed":"R01 resnet50 seed0 5ep val_macro_f1=0.7607 test_macro_f1=0.7545 top1=0.8226 ece=0.0163","notebook_file":"DeepWeeds_Colab_T4.ipynb","notebook_url":"https://colab.research.google.com/drive/1eP28eoCj_IswTTaONWfsRa-fUdskUp8_","output_archive":"outputs_colab.zip","results_downloaded":true,"test_images":3507,"train_images":10501,"val_images":3501,"state":"colab_output_received_R01_evaluated"}

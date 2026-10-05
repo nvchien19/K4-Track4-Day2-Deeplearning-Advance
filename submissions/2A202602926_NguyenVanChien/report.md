@@ -108,13 +108,31 @@ Chinee apple bị đoán thành Snake weed: 15 ảnh. Chiều ngược lại: 10
 
 Q01 là cấu hình đã đánh giá trong phạm vi rút gọn. Chưa thể gọi là cấu hình tốt nhất của toàn bộ lab, chưa thể so sánh cải thiện với mốc nhiều seed hoặc đánh giá độ ổn định. Các số độ trễ chỉ dùng để mô tả CPU này, chưa đủ để khuyến nghị triển khai robot.
 
+## 6b. Bổ sung R01 — ResNet50 train Colab T4 5 epoch (output Colab vừa tải về)
+
+Huấn luyện bằng `DeepWeeds_Colab_T4.ipynb` trên GPU T4 (AMP, AdamW, LR backbone 1e-4 / head 1e-3, batch 32, 5 epoch). Checkpoint `best.pt` chọn bằng macro-F1 val. Suy luận single-view (I00), không temperature scaling.
+
+| Chỉ số | Val | Test |
+|---|---:|---:|
+| Macro-F1 | 0.7607 | 0.7545 |
+| Top-1 | 0.8280 | 0.8226 |
+| Balanced acc | 0.7254 | 0.7142 |
+| ECE | 0.0118 | 0.0163 |
+
+Params 23.53M, GMAC 4.09 (224px). Độ trễ đo local CPU 4 thread batch1 fp32 forward: p50 245.1ms / p95 332.8ms / p99 358.8ms. Độ trễ T4 trên Colab chưa được lưu trong output nên không ghi số T4.
+
+Per-class test R01 (từ `eval.py score`, đủ 3507 ảnh): Chinee apple F1 0.5316 (P 0.9333 / R 0.3717), Lantana 0.8089, Parkinsonia 0.8935, Parthenium 0.6646, Prickly acacia 0.7414, Rubber vine 0.7957, Siam weed 0.8020, Snake weed 0.6719, Negative 0.8808. Lớp khó nhất vẫn là Chinee apple và Parthenium/Snake weed (recall thấp), Negative vẫn cao nhất.
+
+So với Q01 MobileNet (test macro 0.7770): R01 ResNet50 5 epoch thấp hơn 0.0225. Chưa kết luận do khác backbone, khác epoch (4 vs 5), khác seed/môi trường và đều mới 1 seed (không có std).
+
 ## 8. Hạn chế và phần chưa hoàn thành
 
 - Một backbone, một seed, dừng sau 4 epoch.
+- Bổ sung 05/10/2026: thêm R01 ResNet50 Colab T4 5 epoch 1 seed (val 0.7607 / test 0.7545). Vẫn chưa đủ >=5 backbone, >=3 trục ablation, >=4 phương pháp suy luận và >=3 seed cho chung kết/mốc.
 - Chưa đủ >=5 backbone, >=3 trục ablation, >=4 phương pháp suy luận và >=3 seed cho chung kết/mốc.
 - Chưa có kiểm tra overfit một batch, scatter F1–latency, ảnh lỗi và benchmark toàn pipeline.
 - Fold 0 chia ngẫu nhiên theo ảnh, không theo địa điểm nên test có thể lạc quan. Chưa đo lệch miền mùa/ánh sáng/địa điểm.
 
 ## Bằng chứng tái lập
 
-`evidence/results_actual.json`, `evidence/B07_seed0_history.csv`, `evidence/eval_Q01/`, `predictions/Q01_seed0_val.csv`, `predictions/Q01_seed0_test.csv`, `predictions/Q01uncal_seed0_test.csv`. Code gốc `eval.py` không sửa. `results.xlsx` chứa số đã đo và ghi rõ các dòng chưa chạy.
+`evidence/results_actual.json`, `evidence/B07_seed0_history.csv`, `evidence/eval_Q01/`, `predictions/Q01_seed0_val.csv`, `predictions/Q01_seed0_test.csv`, `predictions/Q01uncal_seed0_test.csv`. Bổ sung R01: `predictions/R01_seed0_val.csv`, `predictions/R01_seed0_test.csv`, `evidence/eval_R01/`, `evidence/val_R01.json`, `evidence/lat_R01_cpu.json`, `evidence/predictions_R01_colab_original.csv`. Code gốc `eval.py` không sửa. `results.xlsx` chứa số đã đo và ghi rõ các dòng chưa chạy.
