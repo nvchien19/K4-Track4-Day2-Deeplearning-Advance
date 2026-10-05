@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "C:\Users\nvchi\AppData\Local\Temp\opencode\stageA.py", line 5, in <module>
+    from train import Config, run
+  File "D:\Ambition\AITHUCCHIEN\K4-Track4-Day2-Deeplearning-Advance\submissions/2A202602926_NguyenVanChien/code\train.py", line 21, in <module>
+    import torch
+  File "C:\Users\nvchi\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\torch\__init__.py", line 288, in <module>
+    _load_dll_libraries()
+  File "C:\Users\nvchi\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\torch\__init__.py", line 271, in _load_dll_libraries
+    raise err
+OSError: [WinError 1114] A dynamic link library (DLL) initialization routine failed. Error loading "C:\Users\nvchi\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\torch\lib\c10.dll" or one of its dependencies.
