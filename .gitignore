@@ -16,3 +16,7 @@ eval_out/
 local_outputs/
 logs/
 *.tmp
+# Local spreadsheet dependencies and verification artifacts
+node_modules/
+outputs/
+~$*.xlsx

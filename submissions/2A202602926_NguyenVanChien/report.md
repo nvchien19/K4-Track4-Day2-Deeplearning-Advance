@@ -1,58 +1,120 @@
-# Báo cáo Lab Day 2 — Backbone, công thức huấn luyện và suy luận trên DeepWeeds
-**MSSV:** 2A202602926_NguyenVanChien · **Trạng thái:** khung + EDA thật, kết quả huấn luyện điền sau khi chạy Colab.
-Mọi ô `TODO-Colab` được thay bằng số chạy thật + `exp_id` trước khi nộp.
+# DeepWeeds — kết quả thật của bản chạy rút gọn
 
-## 1. Tóm tắt (≤ 10 dòng)
-- Bài toán: phân loại 9 lớp cỏ dại DeepWeeds (17.509 ảnh 256×256, mất cân bằng, Negative ≈ 52%).
-- TODO-Colab: liệt kê thí nghiệm (≥5 backbone, ≥3 trục huấn luyện, ≥4 PP suy luận), cấu hình tốt nhất
-  + test cuối (mean ± std, macro-F1/test, top-1, ECE), kết luận chính 1–2 câu.
+MSSV: 2A202602926. Họ tên: Nguyễn Văn Chiến. Cập nhật ngày 05/10/2026.
+
+## 1. Tóm tắt
+
+Đã huấn luyện MobileNetV3 Large trên toàn bộ train fold 0, hoàn thành 4 epoch và dừng hàng đợi dài theo yêu cầu. Chọn checkpoint bằng macro-F1 val, so sánh single-view và hflip trên toàn bộ val, sau đó khớp temperature scaling trên val. Cấu hình Q01 dùng flip, seed 0, T=1.2052. Macro-F1 test=0.7770, top-1=0.8386, balanced accuracy=0.7745, ECE=0.0126. Đây là bài lab một phần, chưa đủ số thí nghiệm và seed theo rubric.
 
 ## 2. Dữ liệu và thiết lập
-- Fold 0 nguyên bản (S1): `train_subset0.csv` / `val_subset0.csv` / `test_subset0.csv`, không sửa/không chia lại.
-- Kiểm tra `check_split` (chạy thật ngày 03/10/2026 trên labels gốc):
-  - train = **10.501** (59,98%), val = **3.501** (20,00%), test = **3.507** (20,03%); tổng **17.509** ✔
-  - giao train∩val = train∩test = val∩test = **0** (rỗng) ✔; hợp = 17.509 ✔
-  - tỉ lệ 60/20/20 trong ±1pp ✔. (Kiểm tra file ảnh tồn tại chạy trên Colab sau giải nén.)
-- Per-class (train/val/test): Chinee apple 675/225/226; Lantana 637/213/213; Parkinsonia 618/206/207;
-  Parthenium 613/204/205; Prickly acacia 637/212/213; Rubber vine 605/202/202; Siam weed 644/215/215;
-  Snake weed 609/203/204; Negative 5463/1821/1822.
-- Đối chiếu Table 1 bài báo: Negative 9.106 ✔; 6/8 loài khớp; **Chinee apple 1.126 (+1), Lantana 1.063 (−1)**
-  — lệch nhỏ, ghi nhận để giảng viên đối chiếu; tỉ lệ max/min ≈ 9106/1009 ≈ 9,0×.
-- Chỉ số: chính macro-F1 (val để chọn, test 1 lần/seed ở cuối); phụ top-1, balanced acc, P/R/F1 từng lớp
-  (bắt buộc Chinee apple, Snake weed), ECE 15 bin, trễ p50/p95/p99, mean ± std (ddof=1, ≥3 seed).
-- Công thức nền T00: ImageNet-finetune toàn bộ; train RandomResizedCrop(224)+hflip, val/test Resize256+CenterCrop224,
-  chuẩn hoá ImageNet; AdamW (lr_bb=1e-4, lr_head=1e-3, wd=0,05, trừ norm/bias); warmup 1 epoch + cosine; CE; bs=64;
-  12 epoch; AMP; checkpoint = macro-F1 val cao nhất (hòa lấy sớm hơn).
-- Phần cứng + lib: TODO-Colab (tên GPU, torch/timm version, `IMAGES_DIR` thực tế).
-- Kiểm tra pipeline (§1.3 GUIDE): TODO-Colab (loss ≈ 2,197 + overfit 1 batch + ảnh sau aug) — code hỗ trợ sẵn.
 
-## 3. So sánh backbone (TODO-Colab: điền từ sheet Backbones)
-- Bảng + scatter F1–trễ/params; nhận xét hội tụ/quá khớp; thứ hạng DeepWeeds vs ImageNet; FLOPs có dự báo trễ không;
-  lý do chọn 1–2 backbone đi tiếp (số liệu, gồm đánh đổi trễ).
+DeepWeeds có 17.509 ảnh, 9 lớp. Dùng nguyên bản fold 0: train 10.501, val 3.501, test 3.507. Kiểm tra local xác nhận giao các tập rỗng và mọi file ảnh tồn tại. Không thay đổi split, không gộp val vào train. Test chỉ dùng sau khi đã chọn cách suy luận trên val.
 
-## 4. Công thức huấn luyện (TODO-Colab: điền từ sheet Training)
-- Bảng ablation từng trục (A–G) với Δ vs T00 + so với std; yếu tố nào giúp/hại và vì sao (liên hệ slide);
-  ít nhất 1 kết hợp (cộng dồn hay triệt tiêu); Mixup/CutMix đánh giá bằng val.
+| Lớp | Train | Val | Test |
+|---|---:|---:|---:|
+| Chinee apple | 675 | 225 | 226 |
+| Lantana | 637 | 213 | 213 |
+| Parkinsonia | 618 | 206 | 207 |
+| Parthenium | 613 | 204 | 205 |
+| Prickly acacia | 637 | 212 | 213 |
+| Rubber vine | 605 | 202 | 202 |
+| Siam weed | 644 | 215 | 215 |
+| Snake weed | 609 | 203 | 204 |
+| Negative | 5463 | 1821 | 1822 |
 
-## 5. Suy luận (TODO-Colab: điền từ sheet Inference/Latency)
-- Bảng + scatter đánh đổi F1–trễ; ECE trước/sau temperature scaling (T khớp trên val);
-  kết luận ngoại tuyến vs thời gian thực; TTA có đáng chi phí K× không.
+Negative có 9.106 ảnh, khoảng 52%. Nhãn CSV có Chinee apple 1.126 và Lantana 1.063, khác bảng tham khảo trong README mỗi lớp một ảnh. Giữ nguyên CSV của tác giả.
 
-## 6. Cấu hình tốt nhất (chung kết, test 1 lần/seed)
-- TODO-Colab: mô tả đầy đủ để tái lập; bảng mean ± std (macro-F1/top-1 test, F1 Chinee apple/Snake weed, ECE);
-  `eval.py score/grade` khớp xlsx; ma trận nhầm lẫn + phân tích lỗi (cặp Chinee apple ↔ Snake weed) kèm ảnh sai;
-  2 đề xuất: tốt nhất ngoại tuyến + tốt nhất realtime (p95 ≤ 100 ms batch-1).
+Máy chạy CPU Intel64 Family 6 Model 154 Stepping 3, GenuineIntel, 4 thread, không CUDA. Python 3.11.9, torch 2.13.0+cpu, torchvision 0.29.1+cpu, timm 1.0.30, NumPy 1.26.4, pandas 1.5.3. MobileNetV3 dùng trọng số ImageNet của timm, finetune toàn bộ, 4.214 triệu tham số, khoảng 0.215 GMAC (đếm Conv2d/Linear, chưa gồm mọi phép toán).
 
-## 7. Kết luận và khuyến nghị (TODO-Colab)
-- Cấu hình nào tốt nhất? Hơn mốc T00+I00 bao nhiêu, có vượt nhiễu (Δ vs s) không?
-- Đóng góp lớn nhất: backbone / huấn luyện / suy luận?
-- Robot 30–100 ms/khung: chọn gì, vì sao?
+Train: RandomResizedCrop224, hflip, chuẩn hóa ImageNet. Val/test: Resize256, CenterCrop224, chuẩn hóa ImageNet. CE, AdamW, LR backbone 1e-4, head 1e-3, weight decay 0.05, warmup 1 epoch, batch 16, AMP tắt. Hoàn thành 4 epoch trong lịch warmup+cosine 12 epoch. Không coi đây là cosine 4 epoch đã kết thúc. Chọn epoch có val macro-F1 cao nhất, hòa lấy sớm hơn.
 
-## 8. Hạn chế và việc tiếp theo
-- Mới 1 fold (fold 0), sàng lọc 1 seed; chia ngẫu nhiên không theo địa điểm → test có thể lạc quan;
-  ngân sách GPU Colab (ghi rõ chỗ đã cắt giảm); rủi ro lệch miền (mùa/ánh sáng/địa điểm mới);
-  hướng tiếp theo: nhiều fold/seed, chưng cất, TTA-adaptation trên miền lệch tự tạo (không dùng test fold 0).
+38 test repo và forward 9 lớp đã đạt. Chưa có bằng chứng lưu cho kiểm tra overfit một batch và hình augmentation nên không ghi chúng đã hoàn thành.
 
-## Phụ lục
-- Danh sách `exp_id` đầy đủ trong `results.xlsx` (Summary); log/config/history/checkpoint tốt nhất ở `runs/<exp_id>/seed<k>/`
-  trên Colab (chỉ commit xlsx/png/code/predictions, không commit checkpoint/dataset).
+## 3. Backbone và quá trình huấn luyện
+
+Chỉ B07 MobileNet đã có kết quả thật. B01–B06 chưa chạy hoàn tất nên chưa thể xếp hạng các kiến trúc hoặc kết luận FLOPs dự báo độ trễ.
+
+| Epoch (từ 1) | Train loss | Val loss | Val macro-F1 | Val top-1 |
+|---:|---:|---:|---:|---:|
+| 1 | 1.4796 | 1.0646 | 0.5352 | 0.6510 |
+| 2 | 0.5601 | 0.8228 | 0.6289 | 0.7455 |
+| 3 | 0.3704 | 0.4964 | 0.7750 | 0.8320 |
+| 4 | 0.2722 | 0.5275 | 0.7784 | 0.8312 |
+
+![Đường cong MobileNet](curves/B07_mobilenetv3_large_100_s0.png)
+
+Macro-F1 val tăng từ 0.5352 lên 0.7784. Epoch 4 có F1 tốt hơn epoch 3 nhưng val loss tăng. Chưa đủ bằng chứng để kết luận về hội tụ hoặc quá khớp dài hạn.
+
+## 4. Công thức huấn luyện
+
+Đã chạy công thức nền ở B07. T00–T12 chưa được chạy như các thí nghiệm độc lập. Chưa có ablation khởi tạo, augmentation, loss, sampler, LR hay EMA. Chưa có delta so với T00 hoặc bằng chứng kết hợp các yếu tố.
+
+## 5. Suy luận và độ trễ
+
+| Phương pháp | Macro-F1 val | Top-1 val | ECE val | p50 ms | p95 ms | p99 ms |
+|---|---:|---:|---:|---:|---:|---:|
+| single | 0.7784 | 0.8312 | 0.0389 | 18.18 | 22.02 | 24.32 |
+| flip | 0.7938 | 0.8455 | 0.0238 | 77.01 | 103.82 | 112.22 |
+| flip + temperature | 0.7938 | 0.8455 | 0.0187 | 40.78 | 59.79 | 67.69 |
+
+Hflip gộp logits, không gộp xác suất. T khớp riêng trên val. Độ trễ đo CPU fp32, batch 1, ảnh 224, 10 warmup và 50 lần đo, chỉ tính forward với input tổng hợp. Chưa gồm tải ảnh, tiền xử lý hoặc I/O. Hàng temperature đo forward của phương pháp đã chọn, chưa cộng chi phí softmax/calibration. Không coi đó là độ trễ toàn pipeline.
+
+## 6. Kết quả test Q01 seed 0
+
+Toàn bộ 3.507 ảnh. Các bản hiệu chuẩn và chưa hiệu chuẩn được tạo từ cùng một lượt logit test đã lưu.
+
+| Chỉ số | Giá trị |
+|---|---:|
+| Macro-F1 val sau calibration | 0.7938 |
+| Macro-F1 test | 0.7770 |
+| Top-1 test | 0.8386 |
+| Balanced accuracy test | 0.7745 |
+| ECE test trước calibration | 0.0339 |
+| ECE test sau calibration | 0.0126 |
+
+Chỉ một seed nên chưa có mean ± std. `eval.py score` được chạy từ file dự đoán gốc. Chưa chạy `grade` vì không có nhóm chung kết/mốc >=3 seed tương ứng.
+
+| Lớp | Số ảnh test | Precision | Recall | F1 |
+|---|---:|---:|---:|---:|
+| Chinee apple | 226 | 0.8675 | 0.5796 | 0.6950 |
+| Lantana | 213 | 0.5025 | 0.9296 | 0.6524 |
+| Parkinsonia | 207 | 0.8034 | 0.9082 | 0.8526 |
+| Parthenium | 205 | 0.9293 | 0.8341 | 0.8792 |
+| Prickly acacia | 213 | 0.8013 | 0.5681 | 0.6648 |
+| Rubber vine | 202 | 0.7490 | 0.9307 | 0.8300 |
+| Siam weed | 215 | 0.9181 | 0.7302 | 0.8135 |
+| Snake weed | 204 | 0.8731 | 0.5735 | 0.6923 |
+| Negative | 1822 | 0.9091 | 0.9166 | 0.9128 |
+
+### Ma trận nhầm lẫn
+
+Hàng là nhãn thật, cột là dự đoán, thứ tự lớp theo Label 0–8.
+
+| Nhãn thật | Chinee apple | Lantana | Parkinsonia | Parthenium | Prickly acacia | Rubber vine | Siam weed | Snake weed | Negative |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Chinee apple | 131 | 20 | 1 | 2 | 4 | 10 | 0 | 15 | 43 |
+| Lantana | 0 | 198 | 1 | 0 | 0 | 1 | 1 | 0 | 12 |
+| Parkinsonia | 0 | 4 | 188 | 1 | 1 | 1 | 0 | 0 | 12 |
+| Parthenium | 3 | 7 | 6 | 171 | 5 | 0 | 0 | 0 | 13 |
+| Prickly acacia | 0 | 14 | 31 | 2 | 121 | 5 | 0 | 0 | 40 |
+| Rubber vine | 0 | 3 | 1 | 1 | 0 | 188 | 1 | 0 | 8 |
+| Siam weed | 0 | 38 | 0 | 0 | 0 | 3 | 157 | 1 | 16 |
+| Snake weed | 10 | 46 | 0 | 0 | 3 | 4 | 1 | 117 | 23 |
+| Negative | 7 | 64 | 6 | 7 | 17 | 39 | 11 | 1 | 1670 |
+
+Chinee apple bị đoán thành Snake weed: 15 ảnh. Chiều ngược lại: 10 ảnh. Chưa có tập ảnh lỗi minh họa được xuất.
+
+## 7. Kết luận
+
+Q01 là cấu hình đã đánh giá trong phạm vi rút gọn. Chưa thể gọi là cấu hình tốt nhất của toàn bộ lab, chưa thể so sánh cải thiện với mốc nhiều seed hoặc đánh giá độ ổn định. Các số độ trễ chỉ dùng để mô tả CPU này, chưa đủ để khuyến nghị triển khai robot.
+
+## 8. Hạn chế và phần chưa hoàn thành
+
+- Một backbone, một seed, dừng sau 4 epoch.
+- Chưa đủ >=5 backbone, >=3 trục ablation, >=4 phương pháp suy luận và >=3 seed cho chung kết/mốc.
+- Chưa có kiểm tra overfit một batch, scatter F1–latency, ảnh lỗi và benchmark toàn pipeline.
+- Fold 0 chia ngẫu nhiên theo ảnh, không theo địa điểm nên test có thể lạc quan. Chưa đo lệch miền mùa/ánh sáng/địa điểm.
+
+## Bằng chứng tái lập
+
+`evidence/results_actual.json`, `evidence/B07_seed0_history.csv`, `evidence/eval_Q01/`, `predictions/Q01_seed0_val.csv`, `predictions/Q01_seed0_test.csv`, `predictions/Q01uncal_seed0_test.csv`. Code gốc `eval.py` không sửa. `results.xlsx` chứa số đã đo và ghi rõ các dòng chưa chạy.
